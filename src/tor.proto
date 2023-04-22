@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package tor;
+
+// Service for clients
+service Client {
+    rpc RequestCircuit (RequestCircuitRequest) returns (RequestCircuitResponse) {}
+    rpc SendMessage (SendMessageRequest) returns (SendMessageResponse) {}
+}
+
+// Service for relay nodes
+service Relay {
+    rpc ProcessMessage (ProcessMessageRequest) returns (ProcessMessageResponse) {}
+}
+
+// Service for the directory server
+service DirectoryServer {
+    rpc GetRelayNodes (GetRelayNodesRequest) returns (GetRelayNodesResponse) {}
+}
+
+// Messages for clients
+message RequestCircuitRequest {}
+
+message RequestCircuitResponse {
+    repeated RelayNode relay_nodes = 1;
+}
+
+message SendMessageRequest {
+    string message = 1;
+    repeated RelayNode relay_nodes = 2;
+}
+
+message SendMessageResponse {
+    string response = 1;
+}
+
+// Messages for relay nodes
+message ProcessMessageRequest {
+    string encrypted_message = 1;
+    RelayNode next_relay_node = 2;
+}
+
+message ProcessMessageResponse {
+    string encrypted_message = 1;
+}
+
+// Messages for the directory server
+message GetRelayNodesRequest {}
+
+message GetRelayNodesResponse {
+    repeated RelayNode relay_nodes = 1;
+}
+
+// RelayNode message
+message RelayNode {
+    string address = 1;
+    string public_key = 2;
+    NodeType node_type = 3;
+}
+
+enum NodeType {
+    ENTRY = 0;
+    MIDDLE = 1;
+    EXIT = 2;
+}
