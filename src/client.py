@@ -36,6 +36,22 @@ class JTor_Client(cmd.Cmd):
 
         self.do_help("")
 
+    def do_getNode(self, arg):
+        print("doing getnode")
+        pass
+
+    def do_send(self, arg):
+        args = arg.split(" ")
+        if (len(args) < 1):
+            print("Invalid Arguments to command")
+            return
+        
+        url = args[0]
+
+    def do_exit(self, arg):
+        print("doing exit")
+        quit()
+
     # Print various help messages
     def do_help(self, arg):
         print("Placeholder help message")
@@ -43,6 +59,9 @@ class JTor_Client(cmd.Cmd):
 
         # HELP_SEND = 'send a url through the network'
         # usage: send <url> <entry_node>
+
+        # HELP_GETNODES = 'get all the relay nodes'
+        # usage: getNode
 
 if __name__ == '__main__':
     logging.basicConfig()
