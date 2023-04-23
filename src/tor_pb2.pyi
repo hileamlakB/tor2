@@ -52,14 +52,12 @@ class ProcessMessageResponse(_message.Message):
     def __init__(self, encrypted_message: _Optional[str] = ...) -> None: ...
 
 class RelayNode(_message.Message):
-    __slots__ = ["address", "node_type", "public_key"]
+    __slots__ = ["address", "node_type"]
     ADDRESS_FIELD_NUMBER: _ClassVar[int]
     NODE_TYPE_FIELD_NUMBER: _ClassVar[int]
-    PUBLIC_KEY_FIELD_NUMBER: _ClassVar[int]
     address: str
     node_type: NodeType
-    public_key: str
-    def __init__(self, address: _Optional[str] = ..., public_key: _Optional[str] = ..., node_type: _Optional[_Union[NodeType, str]] = ...) -> None: ...
+    def __init__(self, address: _Optional[str] = ..., node_type: _Optional[_Union[NodeType, str]] = ...) -> None: ...
 
 class RequestCircuitRequest(_message.Message):
     __slots__ = []

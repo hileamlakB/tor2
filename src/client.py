@@ -43,31 +43,22 @@ class JTor_Client(cmd.Cmd):
         publicKey_middle_e, privateKey_middle_e = rsa.newkeys(512)
         publicKey_exit_e, privateKey_exit_e = rsa.newkeys(512)
 
-        # print(f"DEBUG:{publicKey_entry_e.save_pkcs1()}\n{privateKey_entry_e.save_pkcs1()}")
-        # print(f"DEBUG:{publicKey_middle_e}\n{privateKey_middle_e}")
-        # print(f"DEBUG:{publicKey_exit_e}\n{privateKey_exit_e}")
-
         # Generate 3 private/public keypairs for decryption
         publicKey_entry_d, privateKey_entry_d = rsa.newkeys(512)
         publicKey_middle_d, privateKey_middle_d = rsa.newkeys(512)
         publicKey_exit_d, privateKey_exit_d = rsa.newkeys(512)
 
-        # print(f"DEBUG:{publicKey_entry_d}\n{privateKey_entry_d}")
-        # print(f"DEBUG:{publicKey_middle_d}\n{privateKey_middle_d}")
-        # print(f"DEBUG:{publicKey_exit_d}\n{privateKey_exit_d}")
-
         # Store keys on the client
-        self.publicKey_entry = publicKey_entry_e.save_pkcs1()
-        self.publicKey_middle = publicKey_middle_e.save_pkcs1()
-        self.publicKey_exit = publicKey_exit_e.save_pkcs1()
+        self.publicKey_entry = publicKey_entry_e.save_pkcs1().decode('utf-8')
+        self.publicKey_middle = publicKey_middle_e.save_pkcs1().decode('utf-8')
+        self.publicKey_exit = publicKey_exit_e.save_pkcs1().decode('utf-8')
 
-        self.privateKey_entry = privateKey_entry_d.save_pkcs1()
-        self.privateKey_middle = privateKey_middle_d.save_pkcs1()
-        self.privateKey_exit = privateKey_exit_d.save_pkcs1()
+        self.privateKey_entry = privateKey_entry_d.save_pkcs1().decode('utf-8')
+        self.privateKey_middle = privateKey_middle_d.save_pkcs1().decode('utf-8')
+        self.privateKey_exit = privateKey_exit_d.save_pkcs1().decode('utf-8')
 
         # Send the keypairs to the relay nodes
         # TODO: Make this more secure
-        # print(f"DEBUG: {isinstance(privateKey_entry_e.save_pkcs1().decode('utf-8'), str)}")
         response = entry_stub.AcceptKey(tor_pb2.AcceptKeyRequest(key=privateKey_entry_e.save_pkcs1().decode('utf-8'), key_type=tor_pb2.PRIVATE))
         response = entry_stub.AcceptKey(tor_pb2.AcceptKeyRequest(key=publicKey_entry_d.save_pkcs1().decode('utf-8'), key_type=tor_pb2.PUBLIC))
 

@@ -70,8 +70,7 @@ message GetRelayNodesResponse {
 // RelayNode message
 message RelayNode {
     string address = 1;
-    string public_key = 2;
-    NodeType node_type = 3;
+    NodeType node_type = 2;
 }
 
 enum NodeType {

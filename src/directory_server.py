@@ -5,12 +5,12 @@ import tor_pb2_grpc
 
 class DirectoryServerServicer(tor_pb2_grpc.DirectoryServerServicer):
     def GetRelayNodes(self, request, context):
-        print("getting relay nodes")
+        print("returning relay nodes")
         # for the sake of simplicity, we will return a list of relay nodes
         # in reality, we would query the directory server for the list
-        entry_node = tor_pb2.RelayNode(address="2525", public_key="key2525", node_type=tor_pb2.ENTRY)
-        middle_node = tor_pb2.RelayNode(address="2526", public_key="key2526", node_type=tor_pb2.MIDDLE)
-        exit_node = tor_pb2.RelayNode(address="2527", public_key="key2527", node_type=tor_pb2.EXIT)
+        entry_node = tor_pb2.RelayNode(address="2525", node_type=tor_pb2.ENTRY)
+        middle_node = tor_pb2.RelayNode(address="2526", node_type=tor_pb2.MIDDLE)
+        exit_node = tor_pb2.RelayNode(address="2527", node_type=tor_pb2.EXIT)
         return tor_pb2.GetRelayNodesResponse(relay_nodes=[entry_node, middle_node, exit_node])
 
 def serve():

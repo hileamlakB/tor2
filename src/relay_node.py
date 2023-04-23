@@ -7,13 +7,31 @@ import argparse
 
 class RelayServicer(tor_pb2_grpc.RelayServicer):
     def ProcessOutboundMessage(self, request, context):
-        # Implement decryption, forwarding, and circuit building 
-        # and onion routing logic
-        return tor_pb2.ProcessMessageResponse(encrypted_message=...)
+        # Process messages going from client to destination
+        print("DEBUG: Encrypted msg:\n{request.encrypted_message}")
+
+        # Decrypt a layer of the onion using the private key
+
+        # Figure out the next node
+
+        # Establish connection to next node
+
+        # Send remainder of onion to that next node
+
+        return tor_pb2.ProcessMessageResponse(encrypted_message="Response TODO") # Return simply that the message was forwarded?
 
     def ProcessReturnMessage(self, request, context):
-        # Process the message going in reverse
-        return tor_pb2.ProcessMessageResponse(encrypted_message=...)
+        # Process messages going back to client from destination
+
+        # Encrypt the onion with an additional layer using the public key
+
+        # Figure out the return node
+
+        # Establish connection to return node
+
+        # Send onion to return node
+        
+        return tor_pb2.ProcessMessageResponse(encrypted_message="Response TODO")
     
     def AcceptKey(self, request, context):
         if request.key_type == tor_pb2.PUBLIC:
@@ -37,6 +55,8 @@ def serve(port):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Start a relay node")
     parser.add_argument("port", help="Unique port of relay node")
+    # parser.add_argument("type", help="Node type: entry (1), middle (2), or exit (3)")
     args = parser.parse_args()
     port = args.port
+    # type = args.type
     serve(port)
