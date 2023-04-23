@@ -10,7 +10,9 @@ service Client {
 
 // Service for relay nodes
 service Relay {
-    rpc ProcessMessage (ProcessMessageRequest) returns (ProcessMessageResponse) {}
+    rpc ProcessOutboundMessage (ProcessMessageRequest) returns (ProcessMessageResponse) {}
+    rpc ProcessReturnMessage (ProcessMessageRequest) returns (ProcessMessageResponse) {}
+    rpc AcceptKey (AcceptKeyRequest) returns (AcceptKeyResponse) {}
 }
 
 // Service for the directory server
@@ -41,6 +43,21 @@ message ProcessMessageRequest {
 
 message ProcessMessageResponse {
     string encrypted_message = 1;
+}
+
+message AcceptKeyRequest {
+    string key = 1;
+    KeyType key_type = 2;
+}
+
+enum KeyType {
+    NONKEY = 0;
+    PUBLIC = 1;
+    PRIVATE = 2;
+}
+
+message AcceptKeyResponse {
+    string response = 1;
 }
 
 // Messages for the directory server

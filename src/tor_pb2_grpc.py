@@ -112,10 +112,20 @@ class RelayStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.ProcessMessage = channel.unary_unary(
-                '/tor.Relay/ProcessMessage',
+        self.ProcessOutboundMessage = channel.unary_unary(
+                '/tor.Relay/ProcessOutboundMessage',
                 request_serializer=tor__pb2.ProcessMessageRequest.SerializeToString,
                 response_deserializer=tor__pb2.ProcessMessageResponse.FromString,
+                )
+        self.ProcessReturnMessage = channel.unary_unary(
+                '/tor.Relay/ProcessReturnMessage',
+                request_serializer=tor__pb2.ProcessMessageRequest.SerializeToString,
+                response_deserializer=tor__pb2.ProcessMessageResponse.FromString,
+                )
+        self.AcceptKey = channel.unary_unary(
+                '/tor.Relay/AcceptKey',
+                request_serializer=tor__pb2.AcceptKeyRequest.SerializeToString,
+                response_deserializer=tor__pb2.AcceptKeyResponse.FromString,
                 )
 
 
@@ -123,7 +133,19 @@ class RelayServicer(object):
     """Service for relay nodes
     """
 
-    def ProcessMessage(self, request, context):
+    def ProcessOutboundMessage(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ProcessReturnMessage(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def AcceptKey(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -132,10 +154,20 @@ class RelayServicer(object):
 
 def add_RelayServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'ProcessMessage': grpc.unary_unary_rpc_method_handler(
-                    servicer.ProcessMessage,
+            'ProcessOutboundMessage': grpc.unary_unary_rpc_method_handler(
+                    servicer.ProcessOutboundMessage,
                     request_deserializer=tor__pb2.ProcessMessageRequest.FromString,
                     response_serializer=tor__pb2.ProcessMessageResponse.SerializeToString,
+            ),
+            'ProcessReturnMessage': grpc.unary_unary_rpc_method_handler(
+                    servicer.ProcessReturnMessage,
+                    request_deserializer=tor__pb2.ProcessMessageRequest.FromString,
+                    response_serializer=tor__pb2.ProcessMessageResponse.SerializeToString,
+            ),
+            'AcceptKey': grpc.unary_unary_rpc_method_handler(
+                    servicer.AcceptKey,
+                    request_deserializer=tor__pb2.AcceptKeyRequest.FromString,
+                    response_serializer=tor__pb2.AcceptKeyResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -149,7 +181,7 @@ class Relay(object):
     """
 
     @staticmethod
-    def ProcessMessage(request,
+    def ProcessOutboundMessage(request,
             target,
             options=(),
             channel_credentials=None,
@@ -159,9 +191,43 @@ class Relay(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/tor.Relay/ProcessMessage',
+        return grpc.experimental.unary_unary(request, target, '/tor.Relay/ProcessOutboundMessage',
             tor__pb2.ProcessMessageRequest.SerializeToString,
             tor__pb2.ProcessMessageResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ProcessReturnMessage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/tor.Relay/ProcessReturnMessage',
+            tor__pb2.ProcessMessageRequest.SerializeToString,
+            tor__pb2.ProcessMessageResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def AcceptKey(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/tor.Relay/AcceptKey',
+            tor__pb2.AcceptKeyRequest.SerializeToString,
+            tor__pb2.AcceptKeyResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

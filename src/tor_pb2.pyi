@@ -8,7 +8,24 @@ DESCRIPTOR: _descriptor.FileDescriptor
 ENTRY: NodeType
 EXIT: NodeType
 MIDDLE: NodeType
+NONKEY: KeyType
 NONNODE: NodeType
+PRIVATE: KeyType
+PUBLIC: KeyType
+
+class AcceptKeyRequest(_message.Message):
+    __slots__ = ["key", "key_type"]
+    KEY_FIELD_NUMBER: _ClassVar[int]
+    KEY_TYPE_FIELD_NUMBER: _ClassVar[int]
+    key: str
+    key_type: KeyType
+    def __init__(self, key: _Optional[str] = ..., key_type: _Optional[_Union[KeyType, str]] = ...) -> None: ...
+
+class AcceptKeyResponse(_message.Message):
+    __slots__ = ["response"]
+    RESPONSE_FIELD_NUMBER: _ClassVar[int]
+    response: str
+    def __init__(self, response: _Optional[str] = ...) -> None: ...
 
 class GetRelayNodesRequest(_message.Message):
     __slots__ = []
@@ -65,6 +82,9 @@ class SendMessageResponse(_message.Message):
     RESPONSE_FIELD_NUMBER: _ClassVar[int]
     response: str
     def __init__(self, response: _Optional[str] = ...) -> None: ...
+
+class KeyType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = []
 
 class NodeType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = []

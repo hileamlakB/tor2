@@ -7,29 +7,95 @@ import tor_pb2_grpc
 import logging
 import threading
 import cmd
-
-def get_relay_nodes():
-    channel = grpc.insecure_channel("localhost:50051") # directory server lives here
-    stub = tor_pb2_grpc.DirectoryServerStub(channel)
-    response = stub.GetRelayNodes(tor_pb2.GetRelayNodesRequest())
-    return response.relay_nodes
-
-# def send(self, entry_node_addr):
-#     channel = grpc.insecure_channel(f"localhost:{entry_node_addr}") # localhost entrynode
-#     stub = tor_pb2_grpc.RelayStub(channel)
-#     response = stub.GetRelayNodes(tor_pb2.ProcessMessage())
-#     return response.relay_nodes
-
-def send_message(message, relay_nodes):
-    # Implement Key sharing with relays
-    # this might require adding more services on the relays side
-    # for key sharing
-    # message encryption and sending logic
-    pass
+import rsa
 
 # implement client logic preferably
 # using the cmd module to create a command line interface
 class JTor_Client(cmd.Cmd):
+    def get_relay_nodes():
+        channel = grpc.insecure_channel("localhost:50051") # directory server lives here
+        stub = tor_pb2_grpc.DirectoryServerStub(channel)
+        response = stub.GetRelayNodes(tor_pb2.GetRelayNodesRequest())
+        return response.relay_nodes
+
+    # TODO: Implement Key sharing with relays
+    # this might require adding more services on the relays side
+    # for key sharing
+    # message encryption and sending logic
+    def request_circuit(self):
+        # Simple key-sharing scheme on initialization involes simply sending
+        # the keys over in plaintext to the various relay nodes
+
+        # Establish connection with entry relay node
+        entry_channel = grpc.insecure_channel(f'localhost:{self.entry_node.address}')
+        entry_stub = tor_pb2_grpc.RelayStub(entry_channel)
+
+        # Establish connection with middle relay node
+        middle_channel = grpc.insecure_channel(f'localhost:{self.middle_node.address}')
+        middle_stub = tor_pb2_grpc.RelayStub(middle_channel)
+
+        # Establish connection with exit relay node
+        exit_channel = grpc.insecure_channel(f'localhost:{self.exit_node.address}')
+        exit_stub = tor_pb2_grpc.RelayStub(exit_channel)
+
+        # Generate 3 private/public keypairs for encryption
+        publicKey_entry_e, privateKey_entry_e = rsa.newkeys(512)
+        publicKey_middle_e, privateKey_middle_e = rsa.newkeys(512)
+        publicKey_exit_e, privateKey_exit_e = rsa.newkeys(512)
+
+        # Generate 3 private/public keypairs for decryption
+        publicKey_entry_d, privateKey_entry_d = rsa.newkeys(512)
+        publicKey_middle_d, privateKey_middle_d = rsa.newkeys(512)
+        publicKey_exit_d, privateKey_exit_d = rsa.newkeys(512)
+
+        # Store keys on the client
+        self.publicKey_entry = publicKey_entry_e
+        self.publicKey_middle = publicKey_middle_e
+        self.publicKey_exit = publicKey_exit_e
+
+        self.privateKey_entry = privateKey_entry_d
+        self.privateKey_middle = privateKey_middle_d
+        self.privateKey_exit = privateKey_exit_d
+
+        # Send the keypairs to the relay nodes
+        # TODO: Make this more secure
+        response = entry_stub.AcceptKey(tor_pb2.AcceptKeyRequest(privateKey_entry_e, tor_pb2.PRIVATE))
+        response = entry_stub.AcceptKey(tor_pb2.AcceptKeyRequest(publicKey_entry_d, tor_pb2.PUBLIC))
+
+        response = middle_stub.AcceptKey(tor_pb2.AcceptKeyRequest(privateKey_middle_e, tor_pb2.PRIVATE))
+        response = middle_stub.AcceptKey(tor_pb2.AcceptKeyRequest(publicKey_middle_d, tor_pb2.PUBLIC))
+
+        response = exit_stub.AcceptKey(tor_pb2.AcceptKeyRequest(privateKey_exit_e, tor_pb2.PRIVATE))
+        response = exit_stub.AcceptKey(tor_pb2.AcceptKeyRequest(publicKey_exit_d, tor_pb2.PUBLIC))
+
+        # TODO: Persist all keys in case of failures
+
+        return response
+
+    def send_message(self, message, relay_nodes):
+        # Construct the onion
+        # Use some private/public keypair, pickle the dictionaries
+
+        # Establish connection with entry relay node
+        channel = grpc.insecure_channel(f'localhost:{self.entry_node.address}')
+        stub = tor_pb2_grpc.RelayStub(channel)
+
+        # Send the onion to entry relay
+        response = stub.ProcessOutboundMessage(tor_pb2.ProcessMessageRequest())
+        return response # response.status?
+
+    def retrieve_message(self, message, relay_nodes):
+        # Establish connection with the entry relay node
+        channel = grpc.insecure_channel(f'localhost:{self.entry_node.address}')
+        stub = tor_pb2_grpc.RelayStub(channel)
+
+        # Get the return message
+        response = stub.ProcessReturnMessage(tor_pb2.ProcessMessageRequest())
+
+        # Deconstruct the onion
+        # Use the same private/public keypairs, unpickle the dictionaries
+        pass
+    
     prompt = "JTor> "
 
     def __init__(self, port):
@@ -43,7 +109,7 @@ class JTor_Client(cmd.Cmd):
 
     def do_getNode(self, arg):
         print("doing getnode")
-        relay_nodes = get_relay_nodes()
+        relay_nodes = self.get_relay_nodes()
         if relay_nodes[0].node_type == tor_pb2.ENTRY:
             self.relay_entry = relay_nodes[0]
         if relay_nodes[1].node_type == tor_pb2.MIDDLE:
@@ -88,4 +154,4 @@ class JTor_Client(cmd.Cmd):
 
 if __name__ == '__main__':
     logging.basicConfig()
-    JTor_Client(2625).cmdloop()
+    JTor_Client(5432).cmdloop()

@@ -13,15 +13,17 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\ttor.proto\x12\x03tor\"\x17\n\x15RequestCircuitRequest\"=\n\x16RequestCircuitResponse\x12#\n\x0brelay_nodes\x18\x01 \x03(\x0b\x32\x0e.tor.RelayNode\"%\n\x12SendMessageRequest\x12\x0f\n\x07message\x18\x01 \x01(\t\"\'\n\x13SendMessageResponse\x12\x10\n\x08response\x18\x01 \x01(\t\"[\n\x15ProcessMessageRequest\x12\x19\n\x11\x65ncrypted_message\x18\x01 \x01(\t\x12\'\n\x0fnext_relay_node\x18\x02 \x01(\x0b\x32\x0e.tor.RelayNode\"3\n\x16ProcessMessageResponse\x12\x19\n\x11\x65ncrypted_message\x18\x01 \x01(\t\"\x16\n\x14GetRelayNodesRequest\"<\n\x15GetRelayNodesResponse\x12#\n\x0brelay_nodes\x18\x01 \x03(\x0b\x32\x0e.tor.RelayNode\"R\n\tRelayNode\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\t\x12\x12\n\npublic_key\x18\x02 \x01(\t\x12 \n\tnode_type\x18\x03 \x01(\x0e\x32\r.tor.NodeType*8\n\x08NodeType\x12\x0b\n\x07NONNODE\x10\x00\x12\t\n\x05\x45NTRY\x10\x01\x12\n\n\x06MIDDLE\x10\x02\x12\x08\n\x04\x45XIT\x10\x03\x32\x99\x01\n\x06\x43lient\x12K\n\x0eRequestCircuit\x12\x1a.tor.RequestCircuitRequest\x1a\x1b.tor.RequestCircuitResponse\"\x00\x12\x42\n\x0bSendMessage\x12\x17.tor.SendMessageRequest\x1a\x18.tor.SendMessageResponse\"\x00\x32T\n\x05Relay\x12K\n\x0eProcessMessage\x12\x1a.tor.ProcessMessageRequest\x1a\x1b.tor.ProcessMessageResponse\"\x00\x32[\n\x0f\x44irectoryServer\x12H\n\rGetRelayNodes\x12\x19.tor.GetRelayNodesRequest\x1a\x1a.tor.GetRelayNodesResponse\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\ttor.proto\x12\x03tor\"\x17\n\x15RequestCircuitRequest\"=\n\x16RequestCircuitResponse\x12#\n\x0brelay_nodes\x18\x01 \x03(\x0b\x32\x0e.tor.RelayNode\"%\n\x12SendMessageRequest\x12\x0f\n\x07message\x18\x01 \x01(\t\"\'\n\x13SendMessageResponse\x12\x10\n\x08response\x18\x01 \x01(\t\"[\n\x15ProcessMessageRequest\x12\x19\n\x11\x65ncrypted_message\x18\x01 \x01(\t\x12\'\n\x0fnext_relay_node\x18\x02 \x01(\x0b\x32\x0e.tor.RelayNode\"3\n\x16ProcessMessageResponse\x12\x19\n\x11\x65ncrypted_message\x18\x01 \x01(\t\"?\n\x10\x41\x63\x63\x65ptKeyRequest\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x1e\n\x08key_type\x18\x02 \x01(\x0e\x32\x0c.tor.KeyType\"%\n\x11\x41\x63\x63\x65ptKeyResponse\x12\x10\n\x08response\x18\x01 \x01(\t\"\x16\n\x14GetRelayNodesRequest\"<\n\x15GetRelayNodesResponse\x12#\n\x0brelay_nodes\x18\x01 \x03(\x0b\x32\x0e.tor.RelayNode\"R\n\tRelayNode\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\t\x12\x12\n\npublic_key\x18\x02 \x01(\t\x12 \n\tnode_type\x18\x03 \x01(\x0e\x32\r.tor.NodeType*.\n\x07KeyType\x12\n\n\x06NONKEY\x10\x00\x12\n\n\x06PUBLIC\x10\x01\x12\x0b\n\x07PRIVATE\x10\x02*8\n\x08NodeType\x12\x0b\n\x07NONNODE\x10\x00\x12\t\n\x05\x45NTRY\x10\x01\x12\n\n\x06MIDDLE\x10\x02\x12\x08\n\x04\x45XIT\x10\x03\x32\x99\x01\n\x06\x43lient\x12K\n\x0eRequestCircuit\x12\x1a.tor.RequestCircuitRequest\x1a\x1b.tor.RequestCircuitResponse\"\x00\x12\x42\n\x0bSendMessage\x12\x17.tor.SendMessageRequest\x1a\x18.tor.SendMessageResponse\"\x00\x32\xed\x01\n\x05Relay\x12S\n\x16ProcessOutboundMessage\x12\x1a.tor.ProcessMessageRequest\x1a\x1b.tor.ProcessMessageResponse\"\x00\x12Q\n\x14ProcessReturnMessage\x12\x1a.tor.ProcessMessageRequest\x1a\x1b.tor.ProcessMessageResponse\"\x00\x12<\n\tAcceptKey\x12\x15.tor.AcceptKeyRequest\x1a\x16.tor.AcceptKeyResponse\"\x00\x32[\n\x0f\x44irectoryServer\x12H\n\rGetRelayNodes\x12\x19.tor.GetRelayNodesRequest\x1a\x1a.tor.GetRelayNodesResponse\"\x00\x62\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'tor_pb2', globals())
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
-  _NODETYPE._serialized_start=502
-  _NODETYPE._serialized_end=558
+  _KEYTYPE._serialized_start=606
+  _KEYTYPE._serialized_end=652
+  _NODETYPE._serialized_start=654
+  _NODETYPE._serialized_end=710
   _REQUESTCIRCUITREQUEST._serialized_start=18
   _REQUESTCIRCUITREQUEST._serialized_end=41
   _REQUESTCIRCUITRESPONSE._serialized_start=43
@@ -34,16 +36,20 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _PROCESSMESSAGEREQUEST._serialized_end=277
   _PROCESSMESSAGERESPONSE._serialized_start=279
   _PROCESSMESSAGERESPONSE._serialized_end=330
-  _GETRELAYNODESREQUEST._serialized_start=332
-  _GETRELAYNODESREQUEST._serialized_end=354
-  _GETRELAYNODESRESPONSE._serialized_start=356
-  _GETRELAYNODESRESPONSE._serialized_end=416
-  _RELAYNODE._serialized_start=418
-  _RELAYNODE._serialized_end=500
-  _CLIENT._serialized_start=561
-  _CLIENT._serialized_end=714
-  _RELAY._serialized_start=716
-  _RELAY._serialized_end=800
-  _DIRECTORYSERVER._serialized_start=802
-  _DIRECTORYSERVER._serialized_end=893
+  _ACCEPTKEYREQUEST._serialized_start=332
+  _ACCEPTKEYREQUEST._serialized_end=395
+  _ACCEPTKEYRESPONSE._serialized_start=397
+  _ACCEPTKEYRESPONSE._serialized_end=434
+  _GETRELAYNODESREQUEST._serialized_start=436
+  _GETRELAYNODESREQUEST._serialized_end=458
+  _GETRELAYNODESRESPONSE._serialized_start=460
+  _GETRELAYNODESRESPONSE._serialized_end=520
+  _RELAYNODE._serialized_start=522
+  _RELAYNODE._serialized_end=604
+  _CLIENT._serialized_start=713
+  _CLIENT._serialized_end=866
+  _RELAY._serialized_start=869
+  _RELAY._serialized_end=1106
+  _DIRECTORYSERVER._serialized_start=1108
+  _DIRECTORYSERVER._serialized_end=1199
 # @@protoc_insertion_point(module_scope)
