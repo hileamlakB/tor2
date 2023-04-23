@@ -4,7 +4,7 @@ package tor;
 
 // Service for clients
 service Client {
-    rpc RequestCircuit (RequestCircuitRequest) returns (RequestCircuitResponse) {}
+    rpc RequestCircuit (RequestCircuitRequest) returns (RequestCircuitResponse) {} // used to establish key sharing
     rpc SendMessage (SendMessageRequest) returns (SendMessageResponse) {}
 }
 
@@ -26,8 +26,7 @@ message RequestCircuitResponse {
 }
 
 message SendMessageRequest {
-    string message = 1;
-    repeated RelayNode relay_nodes = 2;
+    string message = 1;                     // encrypted onion
 }
 
 message SendMessageResponse {
@@ -36,7 +35,7 @@ message SendMessageResponse {
 
 // Messages for relay nodes
 message ProcessMessageRequest {
-    string encrypted_message = 1;
+    string encrypted_message = 1;       // put the pickled string here
     RelayNode next_relay_node = 2;
 }
 
@@ -59,7 +58,8 @@ message RelayNode {
 }
 
 enum NodeType {
-    ENTRY = 0;
-    MIDDLE = 1;
-    EXIT = 2;
+    NONNODE = 0;
+    ENTRY = 1;
+    MIDDLE = 2;
+    EXIT = 3;
 }
