@@ -12,7 +12,7 @@ import rsa
 # implement client logic preferably
 # using the cmd module to create a command line interface
 class JTor_Client(cmd.Cmd):
-    def get_relay_nodes():
+    def get_relay_nodes(self):
         channel = grpc.insecure_channel("localhost:50051") # directory server lives here
         stub = tor_pb2_grpc.DirectoryServerStub(channel)
         response = stub.GetRelayNodes(tor_pb2.GetRelayNodesRequest())
@@ -27,15 +27,15 @@ class JTor_Client(cmd.Cmd):
         # the keys over in plaintext to the various relay nodes
 
         # Establish connection with entry relay node
-        entry_channel = grpc.insecure_channel(f'localhost:{self.entry_node.address}')
+        entry_channel = grpc.insecure_channel(f'localhost:{self.relay_entry.address}')
         entry_stub = tor_pb2_grpc.RelayStub(entry_channel)
 
         # Establish connection with middle relay node
-        middle_channel = grpc.insecure_channel(f'localhost:{self.middle_node.address}')
+        middle_channel = grpc.insecure_channel(f'localhost:{self.relay_middle.address}')
         middle_stub = tor_pb2_grpc.RelayStub(middle_channel)
 
         # Establish connection with exit relay node
-        exit_channel = grpc.insecure_channel(f'localhost:{self.exit_node.address}')
+        exit_channel = grpc.insecure_channel(f'localhost:{self.relay_exit.address}')
         exit_stub = tor_pb2_grpc.RelayStub(exit_channel)
 
         # Generate 3 private/public keypairs for encryption
@@ -43,34 +43,45 @@ class JTor_Client(cmd.Cmd):
         publicKey_middle_e, privateKey_middle_e = rsa.newkeys(512)
         publicKey_exit_e, privateKey_exit_e = rsa.newkeys(512)
 
+        # print(f"DEBUG:{publicKey_entry_e.save_pkcs1()}\n{privateKey_entry_e.save_pkcs1()}")
+        # print(f"DEBUG:{publicKey_middle_e}\n{privateKey_middle_e}")
+        # print(f"DEBUG:{publicKey_exit_e}\n{privateKey_exit_e}")
+
         # Generate 3 private/public keypairs for decryption
         publicKey_entry_d, privateKey_entry_d = rsa.newkeys(512)
         publicKey_middle_d, privateKey_middle_d = rsa.newkeys(512)
         publicKey_exit_d, privateKey_exit_d = rsa.newkeys(512)
 
-        # Store keys on the client
-        self.publicKey_entry = publicKey_entry_e
-        self.publicKey_middle = publicKey_middle_e
-        self.publicKey_exit = publicKey_exit_e
+        # print(f"DEBUG:{publicKey_entry_d}\n{privateKey_entry_d}")
+        # print(f"DEBUG:{publicKey_middle_d}\n{privateKey_middle_d}")
+        # print(f"DEBUG:{publicKey_exit_d}\n{privateKey_exit_d}")
 
-        self.privateKey_entry = privateKey_entry_d
-        self.privateKey_middle = privateKey_middle_d
-        self.privateKey_exit = privateKey_exit_d
+        # Store keys on the client
+        self.publicKey_entry = publicKey_entry_e.save_pkcs1()
+        self.publicKey_middle = publicKey_middle_e.save_pkcs1()
+        self.publicKey_exit = publicKey_exit_e.save_pkcs1()
+
+        self.privateKey_entry = privateKey_entry_d.save_pkcs1()
+        self.privateKey_middle = privateKey_middle_d.save_pkcs1()
+        self.privateKey_exit = privateKey_exit_d.save_pkcs1()
 
         # Send the keypairs to the relay nodes
         # TODO: Make this more secure
-        response = entry_stub.AcceptKey(tor_pb2.AcceptKeyRequest(privateKey_entry_e, tor_pb2.PRIVATE))
-        response = entry_stub.AcceptKey(tor_pb2.AcceptKeyRequest(publicKey_entry_d, tor_pb2.PUBLIC))
+        # print(f"DEBUG: {isinstance(privateKey_entry_e.save_pkcs1().decode('utf-8'), str)}")
+        response = entry_stub.AcceptKey(tor_pb2.AcceptKeyRequest(key=privateKey_entry_e.save_pkcs1().decode('utf-8'), key_type=tor_pb2.PRIVATE))
+        response = entry_stub.AcceptKey(tor_pb2.AcceptKeyRequest(key=publicKey_entry_d.save_pkcs1().decode('utf-8'), key_type=tor_pb2.PUBLIC))
 
-        response = middle_stub.AcceptKey(tor_pb2.AcceptKeyRequest(privateKey_middle_e, tor_pb2.PRIVATE))
-        response = middle_stub.AcceptKey(tor_pb2.AcceptKeyRequest(publicKey_middle_d, tor_pb2.PUBLIC))
+        response = middle_stub.AcceptKey(tor_pb2.AcceptKeyRequest(key=privateKey_middle_e.save_pkcs1().decode('utf-8'), key_type=tor_pb2.PRIVATE))
+        response = middle_stub.AcceptKey(tor_pb2.AcceptKeyRequest(key=publicKey_middle_d.save_pkcs1().decode('utf-8'), key_type=tor_pb2.PUBLIC))
 
-        response = exit_stub.AcceptKey(tor_pb2.AcceptKeyRequest(privateKey_exit_e, tor_pb2.PRIVATE))
-        response = exit_stub.AcceptKey(tor_pb2.AcceptKeyRequest(publicKey_exit_d, tor_pb2.PUBLIC))
+        response = exit_stub.AcceptKey(tor_pb2.AcceptKeyRequest(key=privateKey_exit_e.save_pkcs1().decode('utf-8'), key_type=tor_pb2.PRIVATE))
+        response = exit_stub.AcceptKey(tor_pb2.AcceptKeyRequest(key=publicKey_exit_d.save_pkcs1().decode('utf-8'), key_type=tor_pb2.PUBLIC))
 
         # TODO: Persist all keys in case of failures
 
-        return response
+        print(response.response)
+
+        return response.response
 
     def send_message(self, message, relay_nodes):
         # Construct the onion
@@ -106,8 +117,10 @@ class JTor_Client(cmd.Cmd):
         self.stub = tor_pb2_grpc.ClientStub(self.channel)
 
         self.do_help("")
+        self.do_getNode()
+        self.do_exchangeKey()
 
-    def do_getNode(self, arg):
+    def do_getNode(self):
         print("doing getnode")
         relay_nodes = self.get_relay_nodes()
         if relay_nodes[0].node_type == tor_pb2.ENTRY:
@@ -116,6 +129,10 @@ class JTor_Client(cmd.Cmd):
             self.relay_middle = relay_nodes[1]
         if relay_nodes[2].node_type == tor_pb2.EXIT:
             self.relay_exit = relay_nodes[2]
+
+    def do_exchangeKey(self):
+        print("exchanging keys")
+        self.request_circuit()
 
     def do_send(self, arg):
         args = arg.split(" ")
