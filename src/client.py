@@ -137,8 +137,11 @@ class JTor_Client(cmd.Cmd):
         # inner layer
         inner_aes_key = os.urandom(32)
         inner_msg = pickle.dumps({
-            "message": url.encode('utf-8'),
-            "destination": None  # should be address of the server
+            "message": request_type.encode('utf-8'),
+            # should be address of the server
+            "destination": url.encode('utf-8'),
+
+
         })
         inner_iv, inner_onion = aes_encrypt(inner_aes_key, inner_msg)
 
@@ -149,6 +152,7 @@ class JTor_Client(cmd.Cmd):
             "destination": self.relay_exit.address,
             "encrypted_key": rsa_encrypt(self.relay_publicKeys[2], inner_aes_key),
             "iv": inner_iv,
+
         })
         middle_iv, middle_onion = aes_encrypt(middle_aes_key, middle_msg)
 
@@ -158,7 +162,8 @@ class JTor_Client(cmd.Cmd):
             "message": middle_onion,
             "destination": self.relay_middle.address,
             "encrypted_key": rsa_encrypt(self.relay_publicKeys[1], middle_aes_key),
-            "iv": middle_iv
+            "iv": middle_iv,
+
         })
         print(outer_aes_key)
         outer_iv, outer_onion = aes_encrypt(outer_aes_key, outer_msg)
@@ -169,12 +174,14 @@ class JTor_Client(cmd.Cmd):
         # Send the onion to the entry relay node
         entry_stub = self.relay_stubs[0]
         print(type(outer_onion), type(outer_aes_encrypted_key))
-        entry_stub.ProcessMessage(
+        entry_stub.ForwardMessage(
             tor_pb2.ProcessMessageRequest(
                 encrypted_message=outer_onion,
                 encrypted_key=outer_aes_encrypted_key,
                 iv=outer_iv,
-                session_id=self.session_id.encode('utf-8'))
+                session_id=self.session_id.encode('utf-8'),
+                return_address="localhost:5002"  # client address),
+
         )
 
 

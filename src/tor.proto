@@ -11,7 +11,8 @@ service Client {
 // Service for relay nodes
 service Relay {
     
-    rpc ProcessMessage (ProcessMessageRequest) returns (ProcessMessageResponse) {}
+    rpc ForwardMessage (ProcessMessageRequest) returns (ProcessMessageResponse) {}
+    rpc BackwardMessage (ProcessMessageRequest) returns (ProcessMessageResponse) {}
     rpc ExchangeKeys (ExchangeKeyRequest) returns (ExchangeKeyResponse) {}
 }
 

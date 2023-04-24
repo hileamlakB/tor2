@@ -112,8 +112,13 @@ class RelayStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.ProcessMessage = channel.unary_unary(
-                '/tor.Relay/ProcessMessage',
+        self.ForwardMessage = channel.unary_unary(
+                '/tor.Relay/ForwardMessage',
+                request_serializer=tor__pb2.ProcessMessageRequest.SerializeToString,
+                response_deserializer=tor__pb2.ProcessMessageResponse.FromString,
+                )
+        self.BackwardMessage = channel.unary_unary(
+                '/tor.Relay/BackwardMessage',
                 request_serializer=tor__pb2.ProcessMessageRequest.SerializeToString,
                 response_deserializer=tor__pb2.ProcessMessageResponse.FromString,
                 )
@@ -128,7 +133,13 @@ class RelayServicer(object):
     """Service for relay nodes
     """
 
-    def ProcessMessage(self, request, context):
+    def ForwardMessage(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def BackwardMessage(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -143,8 +154,13 @@ class RelayServicer(object):
 
 def add_RelayServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'ProcessMessage': grpc.unary_unary_rpc_method_handler(
-                    servicer.ProcessMessage,
+            'ForwardMessage': grpc.unary_unary_rpc_method_handler(
+                    servicer.ForwardMessage,
+                    request_deserializer=tor__pb2.ProcessMessageRequest.FromString,
+                    response_serializer=tor__pb2.ProcessMessageResponse.SerializeToString,
+            ),
+            'BackwardMessage': grpc.unary_unary_rpc_method_handler(
+                    servicer.BackwardMessage,
                     request_deserializer=tor__pb2.ProcessMessageRequest.FromString,
                     response_serializer=tor__pb2.ProcessMessageResponse.SerializeToString,
             ),
@@ -165,7 +181,7 @@ class Relay(object):
     """
 
     @staticmethod
-    def ProcessMessage(request,
+    def ForwardMessage(request,
             target,
             options=(),
             channel_credentials=None,
@@ -175,7 +191,24 @@ class Relay(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/tor.Relay/ProcessMessage',
+        return grpc.experimental.unary_unary(request, target, '/tor.Relay/ForwardMessage',
+            tor__pb2.ProcessMessageRequest.SerializeToString,
+            tor__pb2.ProcessMessageResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def BackwardMessage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/tor.Relay/BackwardMessage',
             tor__pb2.ProcessMessageRequest.SerializeToString,
             tor__pb2.ProcessMessageResponse.FromString,
             options, channel_credentials,

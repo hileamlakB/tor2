@@ -49,7 +49,6 @@ def rsa_decrypt(private_key, encrypted_data):
 
 
 def aes_encrypt(key, data):
-    # print(key, len(key))
     padder = symmetric_padding.PKCS7(128).padder()
     padded_data = padder.update(data) + padder.finalize()
 
