@@ -20,9 +20,44 @@ from concurrent import futures
 
 
 class ClientServicer(tor_pb2_grpc.ClientServicer):
+
+    def __init__(self, client):
+        self.client = client
+        super().__init__()
+
     def ReceiveMessage(self, request, context):
         print("DEBUG: Recieved message from server")
-        print(request)
+
+        # Layer by layer peeling
+        # encrypted_message, encrypted_key, iv = pickle.loads(request.message)
+        # decrypt aes key with entry node's private key
+        aes_key = rsa_decrypt(
+            self.client.privateKeys[0], request.encrypted_key)
+        # # decrypt message with aes key
+
+        first_layer = pickle.loads(aes_decrypt(
+            aes_key, request.iv, request.encrypted_message))
+        first_layer_msg = pickle.loads(first_layer['message'])
+
+        print(len(first_layer_msg))
+        # second layer of peeling
+        encrypted_msg, encrypted_key, iv = first_layer_msg
+        aes_key = rsa_decrypt(self.client.privateKeys[1], encrypted_key)
+        second_layer = pickle.loads(aes_decrypt(
+            aes_key, iv, encrypted_msg))
+        second_layer_msg = pickle.loads(second_layer['message'])
+
+        # third layer of peeling
+        encrypted_msg, encrypted_key, iv = second_layer_msg
+        aes_key = rsa_decrypt(self.client.privateKeys[2], encrypted_key)
+        third_layer = pickle.loads(aes_decrypt(
+            aes_key, iv, encrypted_msg))
+        third_layer_msg = pickle.loads(third_layer['message'])
+
+        headers, content = third_layer_msg
+
+        print(headers)
+
         return tor_pb2.Empty()
 
 
@@ -195,10 +230,10 @@ class JTor_Client(cmd.Cmd):
         )
 
 
-def serve(port):
+def serve(port, client_terminal):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     tor_pb2_grpc.add_ClientServicer_to_server(
-        ClientServicer(), server)
+        ClientServicer(client_terminal), server)
     server.add_insecure_port(f"localhost:{port}")
     print(f"Starting client node on localhost:{port}")
     server.start()
@@ -207,8 +242,10 @@ def serve(port):
 
 if __name__ == '__main__':
 
-    server_thread = threading.Thread(target=serve, args=(5432,))
+    client_terminal = JTor_Client(5432)
+    server_thread = threading.Thread(
+        target=serve, args=(5432, client_terminal,))
     server_thread.start()
 
-    JTor_Client(5432).cmdloop()
+    client_terminal.cmdloop()
     server_thread.join()
