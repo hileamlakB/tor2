@@ -15,15 +15,10 @@ class ClientStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.RequestCircuit = channel.unary_unary(
-                '/tor.Client/RequestCircuit',
-                request_serializer=tor__pb2.RequestCircuitRequest.SerializeToString,
-                response_deserializer=tor__pb2.RequestCircuitResponse.FromString,
-                )
-        self.SendMessage = channel.unary_unary(
-                '/tor.Client/SendMessage',
-                request_serializer=tor__pb2.SendMessageRequest.SerializeToString,
-                response_deserializer=tor__pb2.SendMessageResponse.FromString,
+        self.ReceiveMessage = channel.unary_unary(
+                '/tor.Client/ReceiveMessage',
+                request_serializer=tor__pb2.ProcessMessageRequest.SerializeToString,
+                response_deserializer=tor__pb2.Empty.FromString,
                 )
 
 
@@ -31,14 +26,9 @@ class ClientServicer(object):
     """Service for clients
     """
 
-    def RequestCircuit(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def SendMessage(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+    def ReceiveMessage(self, request, context):
+        """listen for incoming messages
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -46,15 +36,10 @@ class ClientServicer(object):
 
 def add_ClientServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'RequestCircuit': grpc.unary_unary_rpc_method_handler(
-                    servicer.RequestCircuit,
-                    request_deserializer=tor__pb2.RequestCircuitRequest.FromString,
-                    response_serializer=tor__pb2.RequestCircuitResponse.SerializeToString,
-            ),
-            'SendMessage': grpc.unary_unary_rpc_method_handler(
-                    servicer.SendMessage,
-                    request_deserializer=tor__pb2.SendMessageRequest.FromString,
-                    response_serializer=tor__pb2.SendMessageResponse.SerializeToString,
+            'ReceiveMessage': grpc.unary_unary_rpc_method_handler(
+                    servicer.ReceiveMessage,
+                    request_deserializer=tor__pb2.ProcessMessageRequest.FromString,
+                    response_serializer=tor__pb2.Empty.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -68,7 +53,7 @@ class Client(object):
     """
 
     @staticmethod
-    def RequestCircuit(request,
+    def ReceiveMessage(request,
             target,
             options=(),
             channel_credentials=None,
@@ -78,26 +63,9 @@ class Client(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/tor.Client/RequestCircuit',
-            tor__pb2.RequestCircuitRequest.SerializeToString,
-            tor__pb2.RequestCircuitResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
-
-    @staticmethod
-    def SendMessage(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/tor.Client/SendMessage',
-            tor__pb2.SendMessageRequest.SerializeToString,
-            tor__pb2.SendMessageResponse.FromString,
+        return grpc.experimental.unary_unary(request, target, '/tor.Client/ReceiveMessage',
+            tor__pb2.ProcessMessageRequest.SerializeToString,
+            tor__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

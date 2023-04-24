@@ -16,6 +16,14 @@ from encryption import rsa_encrypt, rsa_decrypt, aes_encrypt, aes_decrypt, gener
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
 import subprocess
+from concurrent import futures
+
+
+class ClientServicer(tor_pb2_grpc.ClientServicer):
+    def ReceiveMessage(self, request, context):
+        print("DEBUG: Recieved message from server")
+        print(request)
+        return tor_pb2.Empty()
 
 
 class JTor_Client(cmd.Cmd):
@@ -26,10 +34,11 @@ class JTor_Client(cmd.Cmd):
         super(JTor_Client, self).__init__()
 
         self.user_session_id = ""
-        self.channel = grpc.insecure_channel(f'localhost:{port}')
-        self.stub = tor_pb2_grpc.ClientStub(self.channel)
+        self.address = f'localhost:{port}'
 
-        self.do_help("")
+        # self.do_help("")
+        from tor_message import tor_title_basic
+        print(tor_title_basic)
         self.get_relay_nodes()
         self.build_circuit()
 
@@ -104,7 +113,7 @@ class JTor_Client(cmd.Cmd):
             encryption_keypairs = list(
                 executor.map(generate_rsa_key_pair, key_sizes))
 
-        print(encryption_keypairs)
+        # print(encryption_keypairs)
         # Store keys on the client
         self.publicKeys = [kp[0] for kp in encryption_keypairs]
         self.privateKeys = [kp[1] for kp in encryption_keypairs]
@@ -128,7 +137,7 @@ class JTor_Client(cmd.Cmd):
             )
             self.relay_publicKeys.append(relay_public_key)
 
-        print('Received public keys from relay nodes', self.relay_publicKeys)
+        print('DEBUG: Received public keys from relay nodes')
         return
 
     def send_message(self, url, request_type):
@@ -180,11 +189,26 @@ class JTor_Client(cmd.Cmd):
                 encrypted_key=outer_aes_encrypted_key,
                 iv=outer_iv,
                 session_id=self.session_id.encode('utf-8'),
-                return_address="localhost:5002"  # client address),
+                return_address=self.address  # client address)
+            )
 
         )
 
 
+def serve(port):
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    tor_pb2_grpc.add_ClientServicer_to_server(
+        ClientServicer(), server)
+    server.add_insecure_port(f"localhost:{port}")
+    print(f"Starting client node on localhost:{port}")
+    server.start()
+    server.wait_for_termination()
+
+
 if __name__ == '__main__':
-    logging.basicConfig()
+
+    server_thread = threading.Thread(target=serve, args=(5432,))
+    server_thread.start()
+
     JTor_Client(5432).cmdloop()
+    server_thread.join()

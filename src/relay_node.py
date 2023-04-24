@@ -28,9 +28,10 @@ class RelayServicer(tor_pb2_grpc.RelayServicer):
     GUARD_NODE = 2
     EXIT_NODE = 3
 
-    def __init__(self, relay_type):
+    def __init__(self, port, relay_type):
         super().__init__()
 
+        self.address = f'localhost:{port}'
         self.relay_type = relay_type
         self.relay_public_key, self.relay_private_key = generate_rsa_key_pair(
             1024)
@@ -48,13 +49,47 @@ class RelayServicer(tor_pb2_grpc.RelayServicer):
         }
 
     def BackwardMessage(self, request, context):
-        print("DEBUG: BackwardMessage called: ", request)
+        return_address = self.return_addresses[request.session_id.decode(
+            'utf-8')]
+        print("DEBUG: BackwardMessage recieved forwarding to ", return_address)
+
+        aes_key = os.urandom(32)
+        msg = pickle.dumps({
+            "message": pickle.dumps((request.encrypted_message, request.encrypted_key, request.iv)),
+        })
+        # encrypt with aes key
+        iv, encrypted_message = aes_encrypt(aes_key, msg)
+
+        # encrypt aes key with the session key
+        encrypted_key = rsa_encrypt(
+            self.session_keys[request.session_id.decode('utf-8')], aes_key)
+
+        msg = tor_pb2.ProcessMessageRequest(
+            encrypted_message=encrypted_message,
+            encrypted_key=encrypted_key,
+            iv=iv,
+            session_id=request.session_id,
+        )
+
+        return_address = self.return_addresses[request.session_id.decode(
+            'utf-8')]
+        if self.relay_type == self.ENTRY_NODE:
+            print("DEBUG: Reached entry node; sending to client")
+            # send to client
+            with grpc.insecure_channel(return_address) as channel:
+                stub = tor_pb2_grpc.ClientStub(channel)
+                stub.ReceiveMessage(msg)
+        else:
+            # send to the next relay
+            stub = tor_pb2_grpc.RelayStub(
+                grpc.insecure_channel(return_address))
+            stub.BackwardMessage(msg)
+
+        return tor_pb2.ProcessMessageResponse()
 
     def ForwardMessage(self, request, context):
 
-        # Access the client's address
-        client_address = context.peer()
-
+        client_address = request.return_address
         # store the client's address for later returns
         self.return_addresses[request.session_id.decode(
             'utf-8')] = client_address
@@ -95,11 +130,11 @@ class RelayServicer(tor_pb2_grpc.RelayServicer):
                 iv=inner_iv,
                 session_id=request.session_id)
 
-            print(self.return_addresses[request.session_id.decode('utf-8')])
+            print("DEBUG: Sending back to previous relay: ",
+                  self.return_addresses[request.session_id.decode('utf-8')])
             # create a channel and a stup to return the message to the caller
             stub = tor_pb2_grpc.RelayStub(grpc.insecure_channel(
                 self.return_addresses[request.session_id.decode('utf-8')]))
-            print(stub)
             stub.BackwardMessage(msg)
 
         else:
@@ -107,7 +142,8 @@ class RelayServicer(tor_pb2_grpc.RelayServicer):
                 encrypted_message=inner_dict['message'],
                 encrypted_key=inner_dict['encrypted_key'],
                 iv=inner_dict['iv'],
-                session_id=request.session_id
+                session_id=request.session_id,
+                return_address=self.address
             )
 
             print("DEBUG: Relay Received Message: From", client_address,
@@ -140,7 +176,7 @@ class RelayServicer(tor_pb2_grpc.RelayServicer):
 def serve(port, relay_type):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     tor_pb2_grpc.add_RelayServicer_to_server(
-        RelayServicer(int(relay_type)), server)
+        RelayServicer(port, int(relay_type)), server)
     server.add_insecure_port(f"localhost:{port}")
     print(f"Starting relay node on localhost:{port}")
     server.start()
