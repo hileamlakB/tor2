@@ -15,6 +15,7 @@ import pickle
 from encryption import rsa_encrypt, rsa_decrypt, aes_encrypt, aes_decrypt, generate_rsa_key_pair
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
+import subprocess
 
 
 class JTor_Client(cmd.Cmd):
@@ -34,36 +35,50 @@ class JTor_Client(cmd.Cmd):
 
     def do_send(self, arg):
         args = arg.split(" ")
-        if (len(args) < 1):
+        if len(args) < 2:
             print("Invalid Arguments to command")
             return
-        if self.relay_entry is None:
-            print("Error: No entry node specified")
-            return
-        if self.relay_middle is None:
-            print("Error: No middle node specified")
-            return
-        if self.relay_exit is None:
-            print("Error: No exit node specified")
+        url = args[0]
+        request_type = args[1].upper()
+
+        if request_type not in ('GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS', 'PATCH'):
+            print("Error: Invalid request type")
             return
 
-        url = args[0]
-        self.send_message(url)
+        # You can pass the request_type to the send_message method or use it directly here
+        self.send_message(url, request_type)
 
     def do_exit(self, arg):
         print("Thanks for using JTor! Exiting...")
         quit()
 
-    # Print various help messages
     def do_help(self, arg):
-        print("Placeholder help message")
-        print(arg)
+        if arg.lower() == 'send':
+            print("Send a URL request through the network.")
+            print("Usage: send <url> <request_type>")
+            print("Example: send https://example.com GET")
+        elif arg.lower() == 'exit':
+            print("Exit the JTor client.")
+            print("Usage: exit")
+        elif arg.lower() == 'help':
+            print("Display help messages for available commands.")
+            print("Usage: help <command_name>")
+        else:
+            print("Available commands:")
+            print("  send: Send a URL request through the network.")
+            print("  exit: Exit the JTor client.")
+            print("  help: Display help messages for available commands.")
 
-        # HELP_SEND = 'send a url through the network'
-        # usage: send <url> <entry_node>
+    def do_shell(self, command):
+        result = subprocess.run(
+            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
 
-        # HELP_GETNODES = 'get all the relay nodes'
-        # usage: getNode
+        if result.returncode == 0:
+            print("Command executed successfully:")
+            print(result.stdout)
+        else:
+            print("Command execution failed with error code:", result.returncode)
+            print(result.stderr)
 
     def get_relay_nodes(self):
         print("Getting relay nodes from directory server...")
@@ -116,13 +131,13 @@ class JTor_Client(cmd.Cmd):
         print('Received public keys from relay nodes', self.relay_publicKeys)
         return
 
-    def send_message(self, message):
+    def send_message(self, url, request_type):
         # Construct the onion
 
         # inner layer
         inner_aes_key = os.urandom(32)
         inner_msg = pickle.dumps({
-            "message": message.encode('utf-8'),
+            "message": url.encode('utf-8'),
             "destination": None  # should be address of the server
         })
         inner_iv, inner_onion = aes_encrypt(inner_aes_key, inner_msg)
