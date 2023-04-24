@@ -39,19 +39,21 @@ class JTor_Client(cmd.Cmd):
         exit_stub = tor_pb2_grpc.RelayStub(exit_channel)
 
         # Generate 3 private/public keypairs for encryption
-        publicKey_entry_e, privateKey_entry_e = rsa.newkeys(512)
-        publicKey_middle_e, privateKey_middle_e = rsa.newkeys(512)
-        publicKey_exit_e, privateKey_exit_e = rsa.newkeys(512)
+        publicKey_entry_e, privateKey_entry_e = rsa.newkeys(4096)
+        publicKey_middle_e, privateKey_middle_e = rsa.newkeys(1024)
+        publicKey_exit_e, privateKey_exit_e = rsa.newkeys(256)
 
         # Generate 3 private/public keypairs for decryption
-        publicKey_entry_d, privateKey_entry_d = rsa.newkeys(512)
-        publicKey_middle_d, privateKey_middle_d = rsa.newkeys(512)
-        publicKey_exit_d, privateKey_exit_d = rsa.newkeys(512)
+        publicKey_entry_d, privateKey_entry_d = rsa.newkeys(256) # 256
+        publicKey_middle_d, privateKey_middle_d = rsa.newkeys(256) # 1024
+        publicKey_exit_d, privateKey_exit_d = rsa.newkeys(256) # 4096
 
         # Store keys on the client
         self.publicKey_entry = publicKey_entry_e.save_pkcs1().decode('utf-8')
         self.publicKey_middle = publicKey_middle_e.save_pkcs1().decode('utf-8')
         self.publicKey_exit = publicKey_exit_e.save_pkcs1().decode('utf-8')
+
+        self.debug_key = privateKey_entry_e.save_pkcs1().decode('utf-8')
 
         self.privateKey_entry = privateKey_entry_d.save_pkcs1().decode('utf-8')
         self.privateKey_middle = privateKey_middle_d.save_pkcs1().decode('utf-8')
@@ -74,21 +76,31 @@ class JTor_Client(cmd.Cmd):
 
         return response.response
 
-    def send_message(self, message, relay_nodes):
+    def send_message(self, message):
         # Construct the onion
-        # Use some private/public keypair, pickle the dictionaries
+        inner_layer = rsa.encrypt(str((message, None)).encode('utf-8'), rsa.PublicKey.load_pkcs1(self.publicKey_exit))
+        middle_layer = rsa.encrypt(str((inner_layer, self.relay_exit.address)).encode('utf-8'), rsa.PublicKey.load_pkcs1(self.publicKey_middle))
+        outer_onion = rsa.encrypt(str((middle_layer, self.relay_middle.address)).encode('utf-8'), rsa.PublicKey.load_pkcs1(self.publicKey_entry))
+        
+        decrypted_msg = rsa.decrypt(outer_onion, rsa.PrivateKey.load_pkcs1(self.debug_key))
+        # print(f"DEBUG: r3 public key: {rsa.PublicKey.load_pkcs1(self.publicKey_exit)}")
+        # print(f"Inner layer:\n{inner_layer}\n{str((message, None)).encode('utf-8')}")
+        print(f"Middle layer encrypted:\n{middle_layer}\n")
+        print(f"Middle layer raw:\n{str((inner_layer, self.relay_exit.address)).encode('utf-8')}\n")
+        print(f"Decrypted msg:\n{decrypted_msg}\n")
+        print(f"DEBUG: onion being sent: {outer_onion}")
 
         # Establish connection with entry relay node
-        channel = grpc.insecure_channel(f'localhost:{self.entry_node.address}')
+        channel = grpc.insecure_channel(f'localhost:{self.relay_entry.address}')
         stub = tor_pb2_grpc.RelayStub(channel)
 
         # Send the onion to entry relay
-        response = stub.ProcessOutboundMessage(tor_pb2.ProcessMessageRequest())
+        response = stub.ProcessOutboundMessage(tor_pb2.ProcessMessageRequest(encrypted_message=str(outer_onion), next_relay_node=self.relay_entry))
         return response # response.status?
 
     def retrieve_message(self, message, relay_nodes):
         # Establish connection with the entry relay node
-        channel = grpc.insecure_channel(f'localhost:{self.entry_node.address}')
+        channel = grpc.insecure_channel(f'localhost:{self.relay_entry.address}')
         stub = tor_pb2_grpc.RelayStub(channel)
 
         # Get the return message
@@ -130,9 +142,6 @@ class JTor_Client(cmd.Cmd):
         if (len(args) < 1):
             print("Invalid Arguments to command")
             return
-        
-        url = args[0]
-
         if self.relay_entry is None:
             print("Error: No entry node specified")
             return
@@ -143,7 +152,8 @@ class JTor_Client(cmd.Cmd):
             print("Error: No exit node specified")
             return
         
-        # TODO: Validate the URL is nonempty
+        url = args[0]
+        self.send_message(url)
 
     def do_exit(self, arg):
         print("Thanks for using JTor! Exiting...")

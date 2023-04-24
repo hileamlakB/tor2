@@ -4,19 +4,27 @@ import tor_pb2
 import tor_pb2_grpc
 
 import argparse
+import rsa
+import codecs
 
 class RelayServicer(tor_pb2_grpc.RelayServicer):
     def ProcessOutboundMessage(self, request, context):
         # Process messages going from client to destination
-        print("DEBUG: Encrypted msg:\n{request.encrypted_message}")
-
+        print(f"DEBUG: Encrypted msg:\n{request.encrypted_message}\n")
+        encrypted_msg = request.encrypted_message[2:-1]
+        print(f"DEBUG: trimmed\n{encrypted_msg}\n")
+        # encrypted_msg = codecs.escape_decode(bytes(encrypted_msg, 'utf-8'))[0].decode('utf-8')
+        # encrypted_msg = bytes(encrypted_msg, 'utf-8').decode('unicode_escape')
+        print(f"DEBUG: after bytes converstion:\n{encrypted_msg}")
         # Decrypt a layer of the onion using the private key
-
+        decrypted_message = rsa.decrypt(request.encrypted_message, rsa.PrivateKey.load_pkcs1(self.private_key))
+        print(f"DEBUG: decrypted message {decrypted_message}")
+        print(f"DEBUG: decrypted message decoded {decrypted_message.decode('utf-8')}")
         # Figure out the next node
-
-        # Establish connection to next node
-
-        # Send remainder of onion to that next node
+            # If next node == null, then reached the exit node, forward the request to the internet
+            # Else
+                # Establish connection to next node
+                # Send remainder of onion to that next node
 
         return tor_pb2.ProcessMessageResponse(encrypted_message="Response TODO") # Return simply that the message was forwarded?
 
@@ -30,7 +38,7 @@ class RelayServicer(tor_pb2_grpc.RelayServicer):
         # Establish connection to return node
 
         # Send onion to return node
-        
+
         return tor_pb2.ProcessMessageResponse(encrypted_message="Response TODO")
     
     def AcceptKey(self, request, context):
