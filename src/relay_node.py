@@ -4,53 +4,71 @@ import tor_pb2
 import tor_pb2_grpc
 
 import argparse
+import pickle
 import rsa
 import codecs
+from cryptography.hazmat.primitives import serialization
+from encryption import rsa_encrypt, rsa_decrypt, aes_encrypt, aes_decrypt, generate_rsa_key_pair
+
 
 class RelayServicer(tor_pb2_grpc.RelayServicer):
-    def ProcessOutboundMessage(self, request, context):
-        # Process messages going from client to destination
-        print(f"DEBUG: Encrypted msg:\n{request.encrypted_message}\n")
-        encrypted_msg = request.encrypted_message[2:-1]
-        print(f"DEBUG: trimmed\n{encrypted_msg}\n")
-        # encrypted_msg = codecs.escape_decode(bytes(encrypted_msg, 'utf-8'))[0].decode('utf-8')
-        # encrypted_msg = bytes(encrypted_msg, 'utf-8').decode('unicode_escape')
-        print(f"DEBUG: after bytes converstion:\n{encrypted_msg}")
-        # Decrypt a layer of the onion using the private key
-        decrypted_message = rsa.decrypt(request.encrypted_message, rsa.PrivateKey.load_pkcs1(self.private_key))
-        print(f"DEBUG: decrypted message {decrypted_message}")
-        print(f"DEBUG: decrypted message decoded {decrypted_message.decode('utf-8')}")
-        # Figure out the next node
-            # If next node == null, then reached the exit node, forward the request to the internet
-            # Else
-                # Establish connection to next node
-                # Send remainder of onion to that next node
 
-        return tor_pb2.ProcessMessageResponse(encrypted_message="Response TODO") # Return simply that the message was forwarded?
+    def __init__(self):
+        super().__init__()
 
-    def ProcessReturnMessage(self, request, context):
-        # Process messages going back to client from destination
+        self.relay_public_key, self.relay_private_key = generate_rsa_key_pair(
+            1024)
+        self.relay_public_key_str = self.relay_public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        ).decode('utf-8')
+        self.sessions = {
 
-        # Encrypt the onion with an additional layer using the public key
+        }
 
-        # Figure out the return node
+    def ProcessMessage(self, request, context):
+        # session_id = request.session_id.decode('utf-8')
+        # decrypt the key
+        aes_key = rsa_decrypt(self.relay_private_key, request.encrypted_key)
+        iv = request.iv
 
-        # Establish connection to return node
+        # peal layer using aes key
+        inner = aes_decrypt(aes_key, iv, request.encrypted_message)
+        inner_dict = pickle.loads(inner)
 
-        # Send onion to return node
+        # construct the message for the next node
+        if inner_dict['destination'] == None:
+            print("DEBUG: Reached destination")
+            print("DEBUG: Message", inner_dict['message'])
 
-        return tor_pb2.ProcessMessageResponse(encrypted_message="Response TODO")
-    
-    def AcceptKey(self, request, context):
-        if request.key_type == tor_pb2.PUBLIC:
-            print("DEBUG: Public key received:\n" + str(request.key))
-            self.public_key = request.key
-        if request.key_type == tor_pb2.PRIVATE:
-            print("DEBUG: Private key received:\n" + str(request.key))
-            # print("DEBUG: HELLO!!!")
-            self.private_key = request.key
-        # print("DEBUG: returning out of relay_node")
-        return tor_pb2.AcceptKeyResponse(response="Success!")
+        else:
+            msg = tor_pb2.ProcessMessageRequest(
+                encrypted_message=inner_dict['message'],
+                encrypted_key=inner_dict['encrypted_key'],
+                iv=inner_dict['iv'],
+                session_id=request.session_id
+            )
+            next_relay = inner_dict['destination']
+            stub = tor_pb2_grpc.RelayStub(grpc.insecure_channel(next_relay))
+            stub.ProcessMessage(msg)
+
+        # create a channel and a stub to communicate to the next node
+
+        # i
+        # print("DEBUG: Inner layer", inner_dict)
+
+        return tor_pb2.ProcessMessageResponse()
+
+    def ExchangeKeys(self, request, context):
+
+        session_id = request.session_id
+        publickey = request.public_key
+
+        print("DEBUG: Received public key from client", publickey)
+
+        self.sessions[session_id] = publickey
+        return tor_pb2.ExchangeKeyResponse(public_key=self.relay_public_key_str)
+
 
 def serve(port):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
@@ -59,6 +77,7 @@ def serve(port):
     print(f"Starting relay node on localhost:{port}")
     server.start()
     server.wait_for_termination()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Start a relay node")

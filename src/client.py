@@ -6,110 +6,19 @@ import tor_pb2_grpc
 
 import logging
 import threading
+import concurrent
 import cmd
+import os
 import rsa
+import uuid
+import pickle
+from encryption import rsa_encrypt, rsa_decrypt, aes_encrypt, aes_decrypt, generate_rsa_key_pair
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.backends import default_backend
 
-# implement client logic preferably
-# using the cmd module to create a command line interface
+
 class JTor_Client(cmd.Cmd):
-    def get_relay_nodes(self):
-        channel = grpc.insecure_channel("localhost:50051") # directory server lives here
-        stub = tor_pb2_grpc.DirectoryServerStub(channel)
-        response = stub.GetRelayNodes(tor_pb2.GetRelayNodesRequest())
-        return response.relay_nodes
 
-    # TODO: Implement Key sharing with relays
-    # this might require adding more services on the relays side
-    # for key sharing
-    # message encryption and sending logic
-    def request_circuit(self):
-        # Simple key-sharing scheme on initialization involes simply sending
-        # the keys over in plaintext to the various relay nodes
-
-        # Establish connection with entry relay node
-        entry_channel = grpc.insecure_channel(f'localhost:{self.relay_entry.address}')
-        entry_stub = tor_pb2_grpc.RelayStub(entry_channel)
-
-        # Establish connection with middle relay node
-        middle_channel = grpc.insecure_channel(f'localhost:{self.relay_middle.address}')
-        middle_stub = tor_pb2_grpc.RelayStub(middle_channel)
-
-        # Establish connection with exit relay node
-        exit_channel = grpc.insecure_channel(f'localhost:{self.relay_exit.address}')
-        exit_stub = tor_pb2_grpc.RelayStub(exit_channel)
-
-        # Generate 3 private/public keypairs for encryption
-        publicKey_entry_e, privateKey_entry_e = rsa.newkeys(4096)
-        publicKey_middle_e, privateKey_middle_e = rsa.newkeys(1024)
-        publicKey_exit_e, privateKey_exit_e = rsa.newkeys(256)
-
-        # Generate 3 private/public keypairs for decryption
-        publicKey_entry_d, privateKey_entry_d = rsa.newkeys(256) # 256
-        publicKey_middle_d, privateKey_middle_d = rsa.newkeys(256) # 1024
-        publicKey_exit_d, privateKey_exit_d = rsa.newkeys(256) # 4096
-
-        # Store keys on the client
-        self.publicKey_entry = publicKey_entry_e.save_pkcs1().decode('utf-8')
-        self.publicKey_middle = publicKey_middle_e.save_pkcs1().decode('utf-8')
-        self.publicKey_exit = publicKey_exit_e.save_pkcs1().decode('utf-8')
-
-        self.debug_key = privateKey_entry_e.save_pkcs1().decode('utf-8')
-
-        self.privateKey_entry = privateKey_entry_d.save_pkcs1().decode('utf-8')
-        self.privateKey_middle = privateKey_middle_d.save_pkcs1().decode('utf-8')
-        self.privateKey_exit = privateKey_exit_d.save_pkcs1().decode('utf-8')
-
-        # Send the keypairs to the relay nodes
-        # TODO: Make this more secure
-        response = entry_stub.AcceptKey(tor_pb2.AcceptKeyRequest(key=privateKey_entry_e.save_pkcs1().decode('utf-8'), key_type=tor_pb2.PRIVATE))
-        response = entry_stub.AcceptKey(tor_pb2.AcceptKeyRequest(key=publicKey_entry_d.save_pkcs1().decode('utf-8'), key_type=tor_pb2.PUBLIC))
-
-        response = middle_stub.AcceptKey(tor_pb2.AcceptKeyRequest(key=privateKey_middle_e.save_pkcs1().decode('utf-8'), key_type=tor_pb2.PRIVATE))
-        response = middle_stub.AcceptKey(tor_pb2.AcceptKeyRequest(key=publicKey_middle_d.save_pkcs1().decode('utf-8'), key_type=tor_pb2.PUBLIC))
-
-        response = exit_stub.AcceptKey(tor_pb2.AcceptKeyRequest(key=privateKey_exit_e.save_pkcs1().decode('utf-8'), key_type=tor_pb2.PRIVATE))
-        response = exit_stub.AcceptKey(tor_pb2.AcceptKeyRequest(key=publicKey_exit_d.save_pkcs1().decode('utf-8'), key_type=tor_pb2.PUBLIC))
-
-        # TODO: Persist all keys in case of failures
-
-        print(response.response)
-
-        return response.response
-
-    def send_message(self, message):
-        # Construct the onion
-        inner_layer = rsa.encrypt(str((message, None)).encode('utf-8'), rsa.PublicKey.load_pkcs1(self.publicKey_exit))
-        middle_layer = rsa.encrypt(str((inner_layer, self.relay_exit.address)).encode('utf-8'), rsa.PublicKey.load_pkcs1(self.publicKey_middle))
-        outer_onion = rsa.encrypt(str((middle_layer, self.relay_middle.address)).encode('utf-8'), rsa.PublicKey.load_pkcs1(self.publicKey_entry))
-        
-        decrypted_msg = rsa.decrypt(outer_onion, rsa.PrivateKey.load_pkcs1(self.debug_key))
-        # print(f"DEBUG: r3 public key: {rsa.PublicKey.load_pkcs1(self.publicKey_exit)}")
-        # print(f"Inner layer:\n{inner_layer}\n{str((message, None)).encode('utf-8')}")
-        print(f"Middle layer encrypted:\n{middle_layer}\n")
-        print(f"Middle layer raw:\n{str((inner_layer, self.relay_exit.address)).encode('utf-8')}\n")
-        print(f"Decrypted msg:\n{decrypted_msg}\n")
-        print(f"DEBUG: onion being sent: {outer_onion}")
-
-        # Establish connection with entry relay node
-        channel = grpc.insecure_channel(f'localhost:{self.relay_entry.address}')
-        stub = tor_pb2_grpc.RelayStub(channel)
-
-        # Send the onion to entry relay
-        response = stub.ProcessOutboundMessage(tor_pb2.ProcessMessageRequest(encrypted_message=str(outer_onion), next_relay_node=self.relay_entry))
-        return response # response.status?
-
-    def retrieve_message(self, message, relay_nodes):
-        # Establish connection with the entry relay node
-        channel = grpc.insecure_channel(f'localhost:{self.relay_entry.address}')
-        stub = tor_pb2_grpc.RelayStub(channel)
-
-        # Get the return message
-        response = stub.ProcessReturnMessage(tor_pb2.ProcessMessageRequest())
-
-        # Deconstruct the onion
-        # Use the same private/public keypairs, unpickle the dictionaries
-        pass
-    
     prompt = "JTor> "
 
     def __init__(self, port):
@@ -120,22 +29,8 @@ class JTor_Client(cmd.Cmd):
         self.stub = tor_pb2_grpc.ClientStub(self.channel)
 
         self.do_help("")
-        self.do_getNode()
-        self.do_exchangeKey()
-
-    def do_getNode(self):
-        print("doing getnode")
-        relay_nodes = self.get_relay_nodes()
-        if relay_nodes[0].node_type == tor_pb2.ENTRY:
-            self.relay_entry = relay_nodes[0]
-        if relay_nodes[1].node_type == tor_pb2.MIDDLE:
-            self.relay_middle = relay_nodes[1]
-        if relay_nodes[2].node_type == tor_pb2.EXIT:
-            self.relay_exit = relay_nodes[2]
-
-    def do_exchangeKey(self):
-        print("exchanging keys")
-        self.request_circuit()
+        self.get_relay_nodes()
+        self.build_circuit()
 
     def do_send(self, arg):
         args = arg.split(" ")
@@ -151,7 +46,7 @@ class JTor_Client(cmd.Cmd):
         if self.relay_exit is None:
             print("Error: No exit node specified")
             return
-        
+
         url = args[0]
         self.send_message(url)
 
@@ -169,6 +64,104 @@ class JTor_Client(cmd.Cmd):
 
         # HELP_GETNODES = 'get all the relay nodes'
         # usage: getNode
+
+    def get_relay_nodes(self):
+        print("Getting relay nodes from directory server...")
+        channel = grpc.insecure_channel("localhost:50051")
+        stub = tor_pb2_grpc.DirectoryServerStub(channel)
+        response = stub.GetRelayNodes(tor_pb2.GetRelayNodesRequest())
+        self.relay_entry, self.relay_middle, self.relay_exit = response.relay_nodes
+
+    def build_circuit(self):
+
+        self.session_id = str(uuid.uuid4())
+        self.relay_channels = [
+            grpc.insecure_channel(self.relay_entry.address),
+            grpc.insecure_channel(self.relay_middle.address),
+            grpc.insecure_channel(self.relay_exit.address)
+        ]
+        self.relay_stubs = [tor_pb2_grpc.RelayStub(
+            channel) for channel in self.relay_channels]
+
+        # Generate RSA key pairs concurrently
+        key_sizes = [1024, 1024, 1024]
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            encryption_keypairs = list(
+                executor.map(generate_rsa_key_pair, key_sizes))
+
+        print(encryption_keypairs)
+        # Store keys on the client
+        self.publicKeys = [kp[0] for kp in encryption_keypairs]
+        self.privateKeys = [kp[1] for kp in encryption_keypairs]
+        self.relay_publicKeys = []
+
+        # Send key pairs to the relay nodes and receive their public keys
+        for i, stub in enumerate(self.relay_stubs):
+            public_key_pem = self.publicKeys[i].public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo
+            ).decode('utf-8')
+
+            response = stub.ExchangeKeys(
+                tor_pb2.ExchangeKeyRequest(
+                    session_id=self.session_id,
+                    public_key=public_key_pem))
+
+            relay_public_key = serialization.load_pem_public_key(
+                response.public_key.encode('utf-8'),
+                backend=default_backend()
+            )
+            self.relay_publicKeys.append(relay_public_key)
+
+        print('Received public keys from relay nodes', self.relay_publicKeys)
+        return
+
+    def send_message(self, message):
+        # Construct the onion
+
+        # inner layer
+        inner_aes_key = os.urandom(32)
+        inner_msg = pickle.dumps({
+            "message": message.encode('utf-8'),
+            "destination": None  # should be address of the server
+        })
+        inner_iv, inner_onion = aes_encrypt(inner_aes_key, inner_msg)
+
+        # middle layer
+        middle_aes_key = os.urandom(32)
+        middle_msg = pickle.dumps({
+            "message": inner_onion,
+            "destination": self.relay_exit.address,
+            "encrypted_key": rsa_encrypt(self.relay_publicKeys[2], inner_aes_key),
+            "iv": inner_iv,
+        })
+        middle_iv, middle_onion = aes_encrypt(middle_aes_key, middle_msg)
+
+        # outer layer
+        outer_aes_key = os.urandom(32)
+        outer_msg = pickle.dumps({
+            "message": middle_onion,
+            "destination": self.relay_middle.address,
+            "encrypted_key": rsa_encrypt(self.relay_publicKeys[1], middle_aes_key),
+            "iv": middle_iv
+        })
+        print(outer_aes_key)
+        outer_iv, outer_onion = aes_encrypt(outer_aes_key, outer_msg)
+
+        outer_aes_encrypted_key = rsa_encrypt(self.relay_publicKeys[0],
+                                              outer_aes_key)
+        print(type(outer_msg), "outer_msg")
+        # Send the onion to the entry relay node
+        entry_stub = self.relay_stubs[0]
+        print(type(outer_onion), type(outer_aes_encrypted_key))
+        entry_stub.ProcessMessage(
+            tor_pb2.ProcessMessageRequest(
+                encrypted_message=outer_onion,
+                encrypted_key=outer_aes_encrypted_key,
+                iv=outer_iv,
+                session_id=self.session_id.encode('utf-8'))
+        )
+
 
 if __name__ == '__main__':
     logging.basicConfig()

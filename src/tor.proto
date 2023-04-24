@@ -10,14 +10,25 @@ service Client {
 
 // Service for relay nodes
 service Relay {
-    rpc ProcessOutboundMessage (ProcessMessageRequest) returns (ProcessMessageResponse) {}
-    rpc ProcessReturnMessage (ProcessMessageRequest) returns (ProcessMessageResponse) {}
-    rpc AcceptKey (AcceptKeyRequest) returns (AcceptKeyResponse) {}
+    
+    rpc ProcessMessage (ProcessMessageRequest) returns (ProcessMessageResponse) {}
+    rpc ExchangeKeys (ExchangeKeyRequest) returns (ExchangeKeyResponse) {}
 }
+
 
 // Service for the directory server
 service DirectoryServer {
     rpc GetRelayNodes (GetRelayNodesRequest) returns (GetRelayNodesResponse) {}
+}
+
+
+message ExchangeKeyRequest {
+    string session_id = 1;
+    string public_key = 2;
+}
+
+message ExchangeKeyResponse {
+    string public_key = 1;
 }
 
 // Messages for clients
@@ -37,8 +48,10 @@ message SendMessageResponse {
 
 // Messages for relay nodes
 message ProcessMessageRequest {
-    string encrypted_message = 1;       // put the pickled string here
-    RelayNode next_relay_node = 2;
+    bytes encrypted_message = 1;      
+    bytes encrypted_key = 2;
+    bytes session_id = 3;
+    bytes iv = 4;
 }
 
 message ProcessMessageResponse {
