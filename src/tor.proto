@@ -14,6 +14,7 @@ service Relay {
     rpc ForwardMessage (ProcessMessageRequest) returns (ProcessMessageResponse) {}
     rpc BackwardMessage (ProcessMessageRequest) returns (ProcessMessageResponse) {}
     rpc ExchangeKeys (ExchangeKeyRequest) returns (ExchangeKeyResponse) {}
+    rpc Ping (Empty) returns (Empty) {}
 }
 
 // Empty
@@ -23,6 +24,7 @@ message Empty {}
 // Service for the directory server
 service DirectoryServer {
     rpc GetRelayNodes (GetRelayNodesRequest) returns (GetRelayNodesResponse) {}
+    rpc RelayRegister (RelayNode) returns (Empty) {}
 }
 
 
@@ -37,6 +39,10 @@ message ExchangeKeyResponse {
 
 // Messages for clients
 message RequestCircuitRequest {}
+
+message RelayRegisterResponse {
+    string response = 1;
+}
 
 message RequestCircuitResponse {
     repeated RelayNode relay_nodes = 1;

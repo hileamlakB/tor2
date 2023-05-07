@@ -1,0 +1,8 @@
+- [x] [] - Multiple tabs, a user can send multiple requests at the same time
+- [x] [] - Sessions that can persist across multiple requests (tunnel)
+- [x] [] - Multiple nodes in between
+- [x] [] - Multiple users
+- [x] [] - Fault Tolerance
+- [x] [] - Auto registery to directory server
+- [x] [] - Directory server livness checks
+- [x] [] - Secrutity anaylsis

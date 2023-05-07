@@ -1,6 +1,5 @@
 # Brain storming
 
-
 Design Decisions for the Simplified Tor Network
 
 1. Hardcoded relay nodes: For this simpler version, we decided to use 5 hardcoded machines (1 client, 1 server, and 3 relay nodes). This decision simplifies the initial setup and reduces complexity in the early stages of development.
@@ -18,10 +17,9 @@ Installing gRPC and a brief description of the .proto file:
 ./install_package.sh grpcio grpcio-tools
 ```
 
-
 2. The `tor.proto` file is a Protocol Buffers file that defines the gRPC services and messages for the simplified Tor network. It includes three services:
    * `Client`: Methods for requesting a circuit and sending messages through the network.
-   * `Relay`: A method for processing encrypted messages at each relay node.
+   * `Rresponse.responseelay`: A method for processing encrypted messages at each relay node.
    * `DirectoryServer`: A method for clients to retrieve a list of available relay nodes.
 
 The `.proto` file also defines message types for requests and responses, as well as an enum for node types (entry, middle, and exit). By using Protocol Buffers, the gRPC services are clearly defined, making it easy to understand their functionality and structure.

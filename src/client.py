@@ -39,7 +39,6 @@ class ClientServicer(tor_pb2_grpc.ClientServicer):
             aes_key, request.iv, request.encrypted_message))
         first_layer_msg = pickle.loads(first_layer['message'])
 
-        print(len(first_layer_msg))
         # second layer of peeling
         encrypted_msg, encrypted_key, iv = first_layer_msg
         aes_key = rsa_decrypt(self.client.privateKeys[1], encrypted_key)
@@ -56,7 +55,10 @@ class ClientServicer(tor_pb2_grpc.ClientServicer):
 
         headers, content = third_layer_msg
 
-        print(headers)
+        # print(content)
+        # write content to file
+        with open("output.html", "wb") as f:
+            f.write(content)
 
         return tor_pb2.Empty()
 
@@ -151,6 +153,7 @@ class JTor_Client(cmd.Cmd):
         # print(encryption_keypairs)
         # Store keys on the client
         self.publicKeys = [kp[0] for kp in encryption_keypairs]
+        print(self.publicKeys)
         self.privateKeys = [kp[1] for kp in encryption_keypairs]
         self.relay_publicKeys = []
 
