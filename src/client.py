@@ -17,6 +17,8 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
 import subprocess
 from concurrent import futures
+from atomic import AtomicBoolean
+import time
 
 
 class ClientServicer(tor_pb2_grpc.ClientServicer):
@@ -24,7 +26,7 @@ class ClientServicer(tor_pb2_grpc.ClientServicer):
     def __init__(self, client):
         self.client = client
         super().__init__()
-
+        
     def ReceiveMessage(self, request, context):
         print("DEBUG: Recieved message from server")
 
@@ -59,6 +61,7 @@ class ClientServicer(tor_pb2_grpc.ClientServicer):
         # write content to file
         with open("output.html", "wb") as f:
             f.write(content)
+            self.client.response_received.set(True)
 
         return tor_pb2.Empty()
 
@@ -69,12 +72,19 @@ class ClientServicer(tor_pb2_grpc.ClientServicer):
 class JTor_Client(cmd.Cmd):
 
     prompt = "JTor> "
+    
 
     def __init__(self, port):
         super(JTor_Client, self).__init__()
 
         self.user_session_id = ""
         self.address = f'localhost:{port}'
+        
+        self.num_retries = 10
+        self.response_received = AtomicBoolean(False)
+        self.timeout = 10
+        self.current_retries = 0
+
 
         # self.do_help("")
         from tor_message import tor_title_basic
@@ -91,6 +101,7 @@ class JTor_Client(cmd.Cmd):
         request_type = args[1].upper()
 
         if request_type not in ('GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS', 'PATCH'):
+            # currently we only support GET requests
             print("Error: Invalid request type")
             return
 
@@ -183,6 +194,9 @@ class JTor_Client(cmd.Cmd):
 
     def send_message(self, url, request_type):
         # Construct the onion
+        
+        # set recieve message to false
+        self.response_received.set(False)
 
         # inner layer
         inner_aes_key = os.urandom(32)
@@ -234,6 +248,27 @@ class JTor_Client(cmd.Cmd):
             )
 
         )
+       
+        start_time = time.time()
+        
+        # start waiting for response 
+        while time.time() - start_time < self.timeout:
+            if self.response_received.get():
+                break
+            else:
+                time.sleep(1)
+
+        if not self.response_received.get():
+            self.current_retries += 1
+            if self.current_retries < self.max_retries:
+                # get new relay nodes
+                self.get_relay_nodes()
+                self.build_circuit()
+                self.send_message(url, request_type)
+            else:
+                print("Max retries reached, exiting")
+                return
+            
 
 
 def serve(port, client_terminal):
