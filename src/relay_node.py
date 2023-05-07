@@ -28,7 +28,7 @@ class RelayServicer(tor_pb2_grpc.RelayServicer):
     GUARD_NODE = 2
     EXIT_NODE = 3
 
-    def __init__(self, port, relay_type):
+    def __init__(self, port, relay_type, directory_server):
         super().__init__()
 
         self.address = f'localhost:{port}'
@@ -39,6 +39,26 @@ class RelayServicer(tor_pb2_grpc.RelayServicer):
             encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo
         ).decode('utf-8')
+        
+        directory_server_address = ':'.join(list(directory_server))
+        # create a stub and channel for the directory server
+        channel = grpc.insecure_channel(directory_server_address)
+        stub = tor_pb2_grpc.DirectoryServerStub(channel)
+        # try to connect to the directory server continuously
+        while True:
+            try:
+                
+                response = stub.RelayRegister(tor_pb2.RelayNode(
+                    address=self.address, node_type = self.relay_type))
+                break
+            except Exception as E:
+                print("DEBUG: Failed to connect to directory server, retrying...")
+                continue
+            
+        
+        
+        # register with the directory server
+        
 
         self.session_keys = {
 
@@ -173,10 +193,10 @@ class RelayServicer(tor_pb2_grpc.RelayServicer):
         return tor_pb2.ExchangeKeyResponse(public_key=self.relay_public_key_str)
 
 
-def serve(port, relay_type):
+def serve(port, relay_type, directory_server):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     tor_pb2_grpc.add_RelayServicer_to_server(
-        RelayServicer(port, int(relay_type)), server)
+        RelayServicer(port, int(relay_type), directory_server), server)
     server.add_insecure_port(f"localhost:{port}")
     print(f"Starting relay node on localhost:{port}")
     server.start()
@@ -188,7 +208,11 @@ if __name__ == "__main__":
     parser.add_argument("port", help="Unique port of relay node")
     parser.add_argument(
         "type", help="Node type: entry (1), middle (2), or exit (3)")
+    parser.add_argument(
+        "directory_server", help="Address of the directory server"
+    )
     args = parser.parse_args()
     port = args.port
     relay_type = int(args.type)
-    serve(port, relay_type)
+    directory_server = args.directory_server.split(':')
+    serve(port, relay_type, directory_server)

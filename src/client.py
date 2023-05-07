@@ -134,7 +134,7 @@ class JTor_Client(cmd.Cmd):
         channel = grpc.insecure_channel("localhost:50051")
         stub = tor_pb2_grpc.DirectoryServerStub(channel)
         response = stub.GetRelayNodes(tor_pb2.GetRelayNodesRequest())
-        self.relay_entry, self.relay_middle, self.relay_exit = response.relay_nodes
+        self.relay_entry, self.relay_middle, self.relay_exit = response.relay_nodes[:3]
 
     def build_circuit(self):
 
