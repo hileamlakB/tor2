@@ -62,6 +62,9 @@ class ClientServicer(tor_pb2_grpc.ClientServicer):
 
         return tor_pb2.Empty()
 
+    def Ping(self, request, context):
+        print("DEBUG: Recieved ping from server")
+        return tor_pb2.Empty()
 
 class JTor_Client(cmd.Cmd):
 
