@@ -12,16 +12,17 @@ class DirectoryServerServicer(tor_pb2_grpc.DirectoryServerServicer):
         self.nodes = []
         
         # periodically ping relay nodes to check if they are still alive
-        threading.Thread(target=self.relay_ping).start()
+        threading.Thread(target=self.RelayPing).start()
         
         
     def GetRelayNodes(self, request, context):
         
         relay_nodes = [tor_pb2.RelayNode(address=f"{address}:{port}") for address, port in self.nodes]
-        return tor_pb2.GetRelayNodesResponse(relay_nodes=relay_nodes)
+        print(relay_nodes)
+        return tor_pb2.GetRelayNodesResponse(relay_nodes=[tor_pb2.RelayNode(address=f"{address}:{port}") for address, port in self.nodes])
     
     def RelayRegister(self, request, context):
-        self.nodes.append(request)
+        self.nodes.append(request.address.split(":"))
         return tor_pb2.Empty()
 
     def RelayPing(self):
@@ -51,6 +52,10 @@ def serve():
     tor_pb2_grpc.add_DirectoryServerServicer_to_server(
         DirectoryServerServicer(), server)
     server.add_insecure_port("localhost:50051")
+    # get address at port 50051
+    import socket
+    
+    print("Starting directory server on localhost:50051")
     server.start()
     server.wait_for_termination()
 

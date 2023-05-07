@@ -67,6 +67,8 @@ class RelayServicer(tor_pb2_grpc.RelayServicer):
         self.return_addresses = {
 
         }
+    def Ping(self, request, context):
+        return tor_pb2.Empty()
 
     def BackwardMessage(self, request, context):
         return_address = self.return_addresses[request.session_id.decode(
