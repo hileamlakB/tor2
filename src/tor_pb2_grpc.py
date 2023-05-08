@@ -95,6 +95,11 @@ class RelayStub(object):
                 request_serializer=tor__pb2.ExchangeKeyRequest.SerializeToString,
                 response_deserializer=tor__pb2.ExchangeKeyResponse.FromString,
                 )
+        self.Ping = channel.unary_unary(
+                '/tor.Relay/Ping',
+                request_serializer=tor__pb2.Empty.SerializeToString,
+                response_deserializer=tor__pb2.Empty.FromString,
+                )
 
 
 class RelayServicer(object):
@@ -119,6 +124,12 @@ class RelayServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Ping(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_RelayServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -136,6 +147,11 @@ def add_RelayServicer_to_server(servicer, server):
                     servicer.ExchangeKeys,
                     request_deserializer=tor__pb2.ExchangeKeyRequest.FromString,
                     response_serializer=tor__pb2.ExchangeKeyResponse.SerializeToString,
+            ),
+            'Ping': grpc.unary_unary_rpc_method_handler(
+                    servicer.Ping,
+                    request_deserializer=tor__pb2.Empty.FromString,
+                    response_serializer=tor__pb2.Empty.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -199,6 +215,23 @@ class Relay(object):
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
+    @staticmethod
+    def Ping(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/tor.Relay/Ping',
+            tor__pb2.Empty.SerializeToString,
+            tor__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
 
 class DirectoryServerStub(object):
     """Service for the directory server
@@ -215,6 +248,11 @@ class DirectoryServerStub(object):
                 request_serializer=tor__pb2.GetRelayNodesRequest.SerializeToString,
                 response_deserializer=tor__pb2.GetRelayNodesResponse.FromString,
                 )
+        self.RelayRegister = channel.unary_unary(
+                '/tor.DirectoryServer/RelayRegister',
+                request_serializer=tor__pb2.RelayNode.SerializeToString,
+                response_deserializer=tor__pb2.Empty.FromString,
+                )
 
 
 class DirectoryServerServicer(object):
@@ -227,6 +265,12 @@ class DirectoryServerServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def RelayRegister(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_DirectoryServerServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -234,6 +278,11 @@ def add_DirectoryServerServicer_to_server(servicer, server):
                     servicer.GetRelayNodes,
                     request_deserializer=tor__pb2.GetRelayNodesRequest.FromString,
                     response_serializer=tor__pb2.GetRelayNodesResponse.SerializeToString,
+            ),
+            'RelayRegister': grpc.unary_unary_rpc_method_handler(
+                    servicer.RelayRegister,
+                    request_deserializer=tor__pb2.RelayNode.FromString,
+                    response_serializer=tor__pb2.Empty.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -260,5 +309,22 @@ class DirectoryServer(object):
         return grpc.experimental.unary_unary(request, target, '/tor.DirectoryServer/GetRelayNodes',
             tor__pb2.GetRelayNodesRequest.SerializeToString,
             tor__pb2.GetRelayNodesResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def RelayRegister(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/tor.DirectoryServer/RelayRegister',
+            tor__pb2.RelayNode.SerializeToString,
+            tor__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

@@ -4,12 +4,10 @@ import grpc
 import tor_pb2
 import tor_pb2_grpc
 
-import logging
 import threading
 import concurrent
 import cmd
 import os
-import rsa
 import uuid
 import pickle
 from encryption import rsa_encrypt, rsa_decrypt, aes_encrypt, aes_decrypt, generate_rsa_key_pair
@@ -17,6 +15,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
 import subprocess
 from concurrent import futures
+import time
 
 
 class ClientServicer(tor_pb2_grpc.ClientServicer):
@@ -24,7 +23,7 @@ class ClientServicer(tor_pb2_grpc.ClientServicer):
     def __init__(self, client):
         self.client = client
         super().__init__()
-
+        
     def ReceiveMessage(self, request, context):
         print("DEBUG: Recieved message from server")
 
@@ -39,7 +38,6 @@ class ClientServicer(tor_pb2_grpc.ClientServicer):
             aes_key, request.iv, request.encrypted_message))
         first_layer_msg = pickle.loads(first_layer['message'])
 
-        print(len(first_layer_msg))
         # second layer of peeling
         encrypted_msg, encrypted_key, iv = first_layer_msg
         aes_key = rsa_decrypt(self.client.privateKeys[1], encrypted_key)
@@ -56,20 +54,34 @@ class ClientServicer(tor_pb2_grpc.ClientServicer):
 
         headers, content = third_layer_msg
 
-        print(headers)
+        # print(content)
+        # write content to file
+        with open("output.html", "wb") as f:
+            f.write(content)
+            self.client.response_received = True
 
         return tor_pb2.Empty()
 
+    def Ping(self, request, context):
+        print("DEBUG: Recieved ping from server")
+        return tor_pb2.Empty()
 
 class JTor_Client(cmd.Cmd):
 
     prompt = "JTor> "
+    
 
     def __init__(self, port):
         super(JTor_Client, self).__init__()
 
         self.user_session_id = ""
         self.address = f'localhost:{port}'
+        
+        self.num_retries = 10
+        self.response_received = False
+        self.timeout = 10
+        self.current_retries = 0
+
 
         # self.do_help("")
         from tor_message import tor_title_basic
@@ -86,6 +98,7 @@ class JTor_Client(cmd.Cmd):
         request_type = args[1].upper()
 
         if request_type not in ('GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS', 'PATCH'):
+            # currently we only support GET requests
             print("Error: Invalid request type")
             return
 
@@ -129,7 +142,8 @@ class JTor_Client(cmd.Cmd):
         channel = grpc.insecure_channel("localhost:50051")
         stub = tor_pb2_grpc.DirectoryServerStub(channel)
         response = stub.GetRelayNodes(tor_pb2.GetRelayNodesRequest())
-        self.relay_entry, self.relay_middle, self.relay_exit = response.relay_nodes
+        print(type(response.relay_nodes))
+        self.relay_entry, self.relay_middle, self.relay_exit = list(response.relay_nodes)[:3]
 
     def build_circuit(self):
 
@@ -151,6 +165,7 @@ class JTor_Client(cmd.Cmd):
         # print(encryption_keypairs)
         # Store keys on the client
         self.publicKeys = [kp[0] for kp in encryption_keypairs]
+        print(self.publicKeys)
         self.privateKeys = [kp[1] for kp in encryption_keypairs]
         self.relay_publicKeys = []
 
@@ -177,7 +192,9 @@ class JTor_Client(cmd.Cmd):
 
     def send_message(self, url, request_type):
         # Construct the onion
-
+        
+        # set recieve message to false
+        self.response_received = False
         # inner layer
         inner_aes_key = os.urandom(32)
         inner_msg = pickle.dumps({
@@ -228,6 +245,27 @@ class JTor_Client(cmd.Cmd):
             )
 
         )
+       
+        start_time = time.time()
+        
+        # start waiting for response 
+        while time.time() - start_time < self.timeout:
+            if self.response_received:
+                break
+            else:
+                time.sleep(1)
+
+        if not self.response_received:
+            self.current_retries += 1
+            if self.current_retries < self.max_retries:
+                # get new relay nodes
+                self.get_relay_nodes()
+                self.build_circuit()
+                self.send_message(url, request_type)
+            else:
+                print("Max retries reached, exiting")
+                return
+            
 
 
 def serve(port, client_terminal):
